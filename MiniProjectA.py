@@ -16,13 +16,6 @@ import os
 import Adafruit_GPIO.I2C as I2C
 import spidev
 
-import blynklib
-
-BLYNK_AUTH = 'nHPND-wFoLqY5KeLaFvOyKh0OL-RqobF'
-
-# initialize blynk
-blynk = blynklib.Blynk(BLYNK_AUTH)
-
 # initialise global variables
 
 # select pins to be used from GPIO pinout diagram
@@ -332,43 +325,6 @@ VPIN6 = 6
 displayOnce = 0
 
 
-@blynk.handle_event('read V{}'.format(VPIN0))
-def read_handler(vpin):
-    blynk.virtual_write(VPIN0, convertPotentiometer())
-    blynk.virtual_write(VPIN1, convertTemperatureSensor())
-    blynk.virtual_write(VPIN2, convertLightSensor())
-
-    blynk.virtual_write(VPIN5, getDACOutValue() + "V")
-    blynk.virtual_write(VPIN6, formatTime(systemTimer))
-
-    if getAlarmValue() == "*":
-        blynk.virtual_write(VPIN3, 255)
-
-    else:
-        blynk.virtual_write(VPIN3, 0)
-
-    global displayOnce
-
-    if displayOnce == 0:
-        blynk.virtual_write(VPIN4, "{:<5}{:<5}{:<5}{:<5}{:<5}{:<5}{:<5}".format(
-            "RTC Time", "Sys Timer", "Humidity", "Temp", "Light", "DAC out", "Alarm"))
-        blynk.virtual_write(VPIN4, '\n')
-        displayOnce = 1
-
-    loggingInformationLine = getCurrentLoggingInformation()
-    blynk.virtual_write(VPIN4, "{:<5}{:<5}{:<5}{:<5}{:<5}{:<5}{:<5}".format(
-        loggingInformationLine[0],
-        loggingInformationLine[1],
-        loggingInformationLine[2],
-        loggingInformationLine[3],
-        loggingInformationLine[4],
-        loggingInformationLine[5],
-        loggingInformationLine[6]
-    ))
-
-    blynk.virtual_write(VPIN4, '\n')
-
-
 # ADC functionality
 # this function gets the ADC value from the ADC analog input pins (CH0-CH7)
 def getADCValue(ADCValue):
@@ -431,11 +387,6 @@ def getCurrentLoggingInformation():
             alarmValue]
 
 
-def blynkFunction():
-    while (not programClosed):
-        blynk.run()
-        time.sleep(float(readingInterval) / 5.0)
-
 
 # main function - program logic
 def main():
@@ -447,7 +398,6 @@ if __name__ == "__main__":
     print("Creating threads...")
     valuesUpdator = threading.Thread(target=updateValues)
     alarm = threading.Thread(target=updateAlarm)
-    blynkThread = threading.Thread(target=blynkFunction)
 
     # make sure the GPIO is stopped correctly
     try:
@@ -460,7 +410,6 @@ if __name__ == "__main__":
             time.sleep(float(readingInterval) / 20.0)
 
         alarm.start()
-        blynkThread.start()
         print("Ready...")
 
         while True:
@@ -475,7 +424,6 @@ if __name__ == "__main__":
         # wait for threads
         valuesUpdator.join()
         alarm.join()
-        blynkThread.join()
 
         # turn off GPIOs
         GPIO.cleanup()
@@ -490,7 +438,6 @@ if __name__ == "__main__":
         # wait for threads
         valuesUpdator.join()
         alarm.join()
-        blynkThread.join()
 
         # turn off GPIOs
         GPIO.cleanup()
