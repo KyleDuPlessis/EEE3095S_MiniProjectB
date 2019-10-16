@@ -11,10 +11,74 @@ import RPi.GPIO as GPIO
 import Adafruit_MCP3008
 import datetime
 import threading
-import time
 import os
 import Adafruit_GPIO.I2C as I2C
 import spidev
+
+
+
+
+"""
+MQTT
+"""
+
+import paho.mqtt.client as mqtt
+import time
+
+time.sleep(5)  # Sleep to allow wireless to connect before starting MQTT
+
+# Define Variables
+MQTT_BROKER = "192.168.137.15"
+MQTT_PORT = 1883
+MQTT_KEEPALIVE_INTERVAL = 60
+
+
+# Define on_connect event Handler
+def on_connect(mosq, obj, rc):
+    print("Connected to MQTT Broker")
+
+
+# Define on_publish event Handler
+def on_publish(client, userdata, mid):
+    print("Message Published...")
+
+
+# Initiate MQTT Client
+mqttc = mqtt.Client()
+
+# Register Event Handlers
+mqttc.on_publish = on_publish
+mqttc.on_connect = on_connect
+
+# Connect with MQTT Broker
+mqttc.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
+
+mqttc.loop_start()
+
+topic_RTCTime = "pi/RTCTime"
+topic_SystemTimer = "pi/SystemTimer"
+topic_HumidityReading = "pi/HumidityReading"
+topic_TemperatureReading = "pi/TemperatureReading"
+topic_LightReading = "pi/LightReading"
+topic_DACOut = "pi/DACOut"
+topic_Alarm = "pi/Alarm"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # initialise global variables
 
@@ -314,15 +378,61 @@ def displayLoggingInformation():
         time.sleep(float(readingInterval) / 5.0)
 
 
-VPIN0 = 0
-VPIN1 = 1
-VPIN2 = 2
-VPIN3 = 3
-VPIN4 = 4
-VPIN5 = 5
-VPIN6 = 6
 
-displayOnce = 0
+
+
+
+
+
+
+
+
+
+
+"""
+MQTT
+"""
+
+def publish():
+
+    RTCTime = str(formatTime(values["rtcTime"]))
+    mqttc.publish(topic_RTCTime, payload=RTCTime, retain=True)
+
+    SystemTimer = str(formatTime(systemTimer))
+    mqttc.publish(topic_SystemTimer, payload=SystemTimer, retain=True)
+
+    HumidityReading = str(convertPotentiometer())
+    mqttc.publish(topic_HumidityReading, payload=HumidityReading, retain=True)
+
+    TemperatureReading = str(convertTemperatureSensor())
+    mqttc.publish(topic_TemperatureReading, payload=TemperatureReading, retain=True)
+
+    LightReading = str(convertLightSensor())
+    mqttc.publish(topic_LightReading, payload=LightReading, retain=True)
+
+    DACOut = str(getDACOutValue())
+    mqttc.publish(topic_DACOut, payload=DACOut, retain=True)
+
+    if getAlarmValue() == "*":
+        mqttc.publish(topic_Alarm, payload="ON", retain=True)
+    else:
+        mqttc.publish(topic_Alarm, payload="OFF", retain=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ADC functionality
@@ -392,6 +502,11 @@ def getCurrentLoggingInformation():
 def main():
     displayLoggingInformation()
 
+    """
+    MQTT
+    """
+    publish()
+
 
 # only run the functions if
 if __name__ == "__main__":
@@ -425,6 +540,8 @@ if __name__ == "__main__":
         valuesUpdator.join()
         alarm.join()
 
+        mqttc.disconnect()
+
         # turn off GPIOs
         GPIO.cleanup()
 
@@ -438,6 +555,8 @@ if __name__ == "__main__":
         # wait for threads
         valuesUpdator.join()
         alarm.join()
+
+        mqttc.disconnect()
 
         # turn off GPIOs
         GPIO.cleanup()

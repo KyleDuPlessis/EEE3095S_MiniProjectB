@@ -5,5 +5,3 @@ October 2019
 Kyle du Plessis - DPLKYL002
 Hendri Vermeulen - VRMHEN004
 """
-
-# import relevant libraries
