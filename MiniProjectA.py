@@ -28,8 +28,8 @@ import time
 time.sleep(5)  # Sleep to allow wireless to connect before starting MQTT
 
 # Define Variables
-MQTT_BROKER = "192.168.137.15"
-MQTT_PORT = 1883
+MQTT_BROKER = "165.255.54.136"
+MQTT_PORT = 1880
 MQTT_KEEPALIVE_INTERVAL = 60
 
 
