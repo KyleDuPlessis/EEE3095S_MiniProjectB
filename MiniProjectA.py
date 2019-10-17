@@ -29,11 +29,7 @@ time.sleep(5)  # Sleep to allow wireless to connect before starting MQTT
 
 # Define Variables
 MQTT_BROKER = "165.255.54.136"
-<<<<<<< HEAD
 MQTT_PORT = 1883
-=======
-MQTT_PORT = 1880
->>>>>>> e217f105f9caa946fe8b1b7065275cc4052a2ee5
 MQTT_KEEPALIVE_INTERVAL = 60
 
 
