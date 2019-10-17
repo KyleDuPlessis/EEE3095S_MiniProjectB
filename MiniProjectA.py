@@ -28,7 +28,7 @@ import time
 time.sleep(5)  # Sleep to allow wireless to connect before starting MQTT
 
 # Define Variables
-MQTT_BROKER = "192.168.137.15"
+MQTT_BROKER = "165.255.54.136"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE_INTERVAL = 60
 
@@ -40,7 +40,8 @@ def on_connect(mosq, obj, rc):
 
 # Define on_publish event Handler
 def on_publish(client, userdata, mid):
-    print("Message Published...")
+    #print("Message Published...")
+    pass
 
 
 # Initiate MQTT Client
@@ -393,6 +394,12 @@ def displayLoggingInformation():
 MQTT
 """
 
+def publishThread():
+    while (not programClosed):  # only continue if parent thread is running
+        if (monitoringEnabled):
+            publish()
+        time.sleep(float(readingInterval) / 5.0)
+
 def publish():
 
     RTCTime = str(formatTime(values["rtcTime"]))
@@ -502,17 +509,13 @@ def getCurrentLoggingInformation():
 def main():
     displayLoggingInformation()
 
-    """
-    MQTT
-    """
-    publish()
-
 
 # only run the functions if
 if __name__ == "__main__":
     print("Creating threads...")
     valuesUpdator = threading.Thread(target=updateValues)
     alarm = threading.Thread(target=updateAlarm)
+    MQTT = threading.Thread(target=publishThread)
 
     # make sure the GPIO is stopped correctly
     try:
@@ -525,6 +528,7 @@ if __name__ == "__main__":
             time.sleep(float(readingInterval) / 20.0)
 
         alarm.start()
+        MQTT.start()
         print("Ready...")
 
         while True:
@@ -539,7 +543,9 @@ if __name__ == "__main__":
         # wait for threads
         valuesUpdator.join()
         alarm.join()
+        MQTT.join()
 
+	mqttc.loop_stop()
         mqttc.disconnect()
 
         # turn off GPIOs
@@ -555,7 +561,9 @@ if __name__ == "__main__":
         # wait for threads
         valuesUpdator.join()
         alarm.join()
+	MQTT.join()
 
+	mqttc.loop_stop()
         mqttc.disconnect()
 
         # turn off GPIOs
