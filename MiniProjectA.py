@@ -44,6 +44,8 @@ def on_publish(client, userdata, mid):
     pass
 
 
+lock = threading.RLock()
+
 # Initiate MQTT Client
 mqttc = mqtt.Client()
 
@@ -63,22 +65,15 @@ topic_TemperatureReading = "pi/TemperatureReading"
 topic_LightReading = "pi/LightReading"
 topic_DACOut = "pi/DACOut"
 topic_Alarm = "pi/Alarm"
+topic_AlarmThresLowerTrigger = "pi/AlarmThresLowerTrigger"
+topic_AlarmThresUpperTrigger = "pi/AlarmThresUpperTrigger"
+topic_AlarmDismiss = "pi/AlarmDismiss"
+topic_AlarmThresUpperValue = "pi/AlarmThresUpperValue"
+topic_AlarmThresLowerValue = "pi/AlarmThresLowerValue"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+mqttc.subscribe(topic_AlarmThresLowerTrigger, qos=0)
+mqttc.subscribe(topic_AlarmThresUpperTrigger, qos=0)
+mqttc.subscribe(topic_AlarmDismiss, qos=0)
 
 
 # initialise global variables
@@ -286,6 +281,29 @@ def dismissAlarm(arg):
         values["alarm"] = False
         Alarm.ChangeDutyCycle(0)
 
+def mqttAlarmDismiss(client, userdata, message):
+	values["alarm"] = False
+        Alarm.ChangeDutyCycle(0)
+        
+def mqttAlarmThresUpperChange(client, userdata, message):	
+	global dacVoltMax
+	lock.acquire()
+	dacVoltMax = float(str(message.payload.decode("utf-8")))
+	lock.release()
+        
+def mqttAlarmThresLowerChange(client, userdata, message):
+	global dacVoltMin
+	lock.acquire()
+	dacVoltMin = float(str(message.payload.decode("utf-8")))
+	lock.release()
+
+
+#MQTT Subscriptions:
+mqttc.message_callback_add(topic_AlarmDismiss, mqttAlarmDismiss)
+mqttc.message_callback_add(topic_AlarmThresLowerTrigger, mqttAlarmThresLowerChange)
+mqttc.message_callback_add(topic_AlarmThresUpperTrigger, mqttAlarmThresUpperChange)
+
+
 
 # inputs - interrupts and edge detection
 # falling edge detection on buttons, ignoring further edges for 200ms for switch bounce handling
@@ -398,7 +416,7 @@ def publishThread():
     while (not programClosed):  # only continue if parent thread is running
         if (monitoringEnabled):
             publish()
-        time.sleep(float(readingInterval) / 5.0)
+        time.sleep(float(readingInterval))
 
 def publish():
 
@@ -419,6 +437,14 @@ def publish():
 
     DACOut = str(getDACOutValue())
     mqttc.publish(topic_DACOut, payload=DACOut, retain=True)
+    
+    lock.acquire()
+    AlarmUpper = str(dacVoltMax)
+    mqttc.publish(topic_AlarmThresUpperValue, payload=AlarmUpper, retain=True)
+    
+    AlarmLower = str(dacVoltMin)
+    mqttc.publish(topic_AlarmThresLowerValue, payload=AlarmLower, retain=True)
+    lock.release()
 
     if getAlarmValue() == "*":
         mqttc.publish(topic_Alarm, payload="ON", retain=True)
