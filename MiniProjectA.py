@@ -28,7 +28,7 @@ import time
 time.sleep(5)  # Sleep to allow wireless to connect before starting MQTT
 
 # Define Variables
-MQTT_BROKER = "165.255.54.136"
+MQTT_BROKER = "192.168.1.8"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE_INTERVAL = 60
 
@@ -67,6 +67,7 @@ topic_DACOut = "pi/DACOut"
 topic_Alarm = "pi/Alarm"
 topic_AlarmThresLowerTrigger = "pi/AlarmThresLowerTrigger"
 topic_AlarmThresUpperTrigger = "pi/AlarmThresUpperTrigger"
+topic_AlarmNotify = "pi/AlarmNotify"
 topic_AlarmDismiss = "pi/AlarmDismiss"
 topic_AlarmThresUpperValue = "pi/AlarmThresUpperValue"
 topic_AlarmThresLowerValue = "pi/AlarmThresLowerValue"
@@ -74,7 +75,7 @@ topic_AlarmThresLowerValue = "pi/AlarmThresLowerValue"
 mqttc.subscribe(topic_AlarmThresLowerTrigger, qos=0)
 mqttc.subscribe(topic_AlarmThresUpperTrigger, qos=0)
 mqttc.subscribe(topic_AlarmDismiss, qos=0)
-
+mqttc.subscribe(topic_AlarmNotify, qos=0)
 
 # initialise global variables
 
@@ -282,8 +283,10 @@ def dismissAlarm(arg):
         Alarm.ChangeDutyCycle(0)
 
 def mqttAlarmDismiss(client, userdata, message):
-	values["alarm"] = False
-        Alarm.ChangeDutyCycle(0)
+	tmp = str(message.payload.decode("utf-8"))
+	if(tmp == "DismissButton" or tmp == "Dismiss"):
+		values["alarm"] = False
+        	Alarm.ChangeDutyCycle(0)
         
 def mqttAlarmThresUpperChange(client, userdata, message):	
 	global dacVoltMax
@@ -302,6 +305,7 @@ def mqttAlarmThresLowerChange(client, userdata, message):
 mqttc.message_callback_add(topic_AlarmDismiss, mqttAlarmDismiss)
 mqttc.message_callback_add(topic_AlarmThresLowerTrigger, mqttAlarmThresLowerChange)
 mqttc.message_callback_add(topic_AlarmThresUpperTrigger, mqttAlarmThresUpperChange)
+mqttc.message_callback_add(topic_AlarmNotify, mqttAlarmDismiss)
 
 
 
@@ -362,6 +366,7 @@ def updateAlarm():
                     values["alarm"] = True
                     soundBefore = True
                     Alarm.ChangeDutyCycle(50)
+                    mqttc.publish(topic_AlarmNotify, payload="Alarm Sounded!!", retain=True)
         time.sleep(float(readingInterval) / 10.0)
 
 
@@ -548,13 +553,13 @@ if __name__ == "__main__":
 
         # os.system('clear')
         print("Starting threads...")
+        MQTT.start()
         valuesUpdator.start()
 
         while (not valuesUpdatorIsReady):
             time.sleep(float(readingInterval) / 20.0)
-
+        
         alarm.start()
-        MQTT.start()
         print("Ready...")
 
         while True:
