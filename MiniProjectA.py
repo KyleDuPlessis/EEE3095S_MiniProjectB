@@ -75,11 +75,13 @@ topic_AlarmNotify = "pi/AlarmNotify"
 topic_AlarmDismiss = "pi/AlarmDismiss"
 topic_AlarmThresUpperValue = "pi/AlarmThresUpperValue"
 topic_AlarmThresLowerValue = "pi/AlarmThresLowerValue"
+topic_MonitoringEnabled = "pi/MonitoringEnabled"
 
 mqttc.subscribe(topic_AlarmThresLowerTrigger, qos=0)
 mqttc.subscribe(topic_AlarmThresUpperTrigger, qos=0)
 mqttc.subscribe(topic_AlarmDismiss, qos=0)
 mqttc.subscribe(topic_AlarmNotify, qos=0)
+mqttc.subscribe(topic_MonitoringEnabled, qos=0)
 
 # initialise global variables
 
@@ -303,6 +305,20 @@ def mqttAlarmThresLowerChange(client, userdata, message):
 	lock.acquire()
 	dacVoltMin = float(str(message.payload.decode("utf-8")))
 	lock.release()
+	
+mqttLastUpdatedMonitoring = time.time()*1000
+def mqttSetMonitoring(client, userdata, message):
+	global monitoringEnabled
+	global mqttLastUpdatedMonitoring
+	currentTime = time.time()*1000
+	if(currentTime - mqttLastUpdatedMonitoring > 10): #check each 10ms
+		mqttLastUpdatedMonitoring = time.time()*1000
+		monitoringSetTo = str(message.payload.decode("utf-8"))
+		lock.acquire()
+		monitoringEnabled = False
+		if(monitoringSetTo == "true"):
+			monitoringEnabled = True			
+		lock.release()
 
 
 #MQTT Subscriptions:
@@ -310,7 +326,7 @@ mqttc.message_callback_add(topic_AlarmDismiss, mqttAlarmDismiss)
 mqttc.message_callback_add(topic_AlarmThresLowerTrigger, mqttAlarmThresLowerChange)
 mqttc.message_callback_add(topic_AlarmThresUpperTrigger, mqttAlarmThresUpperChange)
 mqttc.message_callback_add(topic_AlarmNotify, mqttAlarmDismiss)
-
+mqttc.message_callback_add(topic_MonitoringEnabled, mqttSetMonitoring)
 
 
 # inputs - interrupts and edge detection
@@ -453,6 +469,13 @@ def publish():
     
     AlarmLower = str(dacVoltMin)
     mqttc.publish(topic_AlarmThresLowerValue, payload=AlarmLower, retain=True)
+    
+    MonitoringStatus = "false"
+    if(monitoringEnabled):
+    	MonitoringStatus = "true"
+    mqttc.publish(topic_MonitoringEnabled, payload=MonitoringStatus, retain=True)
+    
+    
     lock.release()
 
     if getAlarmValue() == "*":
