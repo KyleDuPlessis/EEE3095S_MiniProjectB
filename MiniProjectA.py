@@ -32,6 +32,8 @@ MQTT_BROKER = "192.168.1.8"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE_INTERVAL = 60
 
+MQTT_BROKER = "farmer.cloudmqtt.com"
+MQTT_PORT = 15215
 
 # Define on_connect event Handler
 def on_connect(mosq, obj, rc):
@@ -52,6 +54,8 @@ mqttc = mqtt.Client()
 # Register Event Handlers
 mqttc.on_publish = on_publish
 mqttc.on_connect = on_connect
+
+mqttc.username_pw_set("lttcflex", "icuxLR9dz3hv")
 
 # Connect with MQTT Broker
 mqttc.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
