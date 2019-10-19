@@ -60,8 +60,6 @@ mqttc.username_pw_set("lttcflex", "icuxLR9dz3hv")
 # Connect with MQTT Broker
 mqttc.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
 
-mqttc.loop_start()
-
 topic_RTCTime = "pi/RTCTime"
 topic_SystemTimer = "pi/SystemTimer"
 topic_HumidityReading = "pi/HumidityReading"
@@ -315,9 +313,10 @@ def mqttSetMonitoring(client, userdata, message):
 		mqttLastUpdatedMonitoring = time.time()*1000
 		monitoringSetTo = str(message.payload.decode("utf-8"))
 		lock.acquire()
-		monitoringEnabled = False
+		request = False
 		if(monitoringSetTo == "true"):
-			monitoringEnabled = True			
+			request = True
+		#monitoringEnabled = request		
 		lock.release()
 
 
@@ -444,7 +443,8 @@ def publishThread():
         time.sleep(float(readingInterval))
 
 def publish():
-
+	
+    lock.acquire()
     RTCTime = str(formatTime(values["rtcTime"]))
     mqttc.publish(topic_RTCTime, payload=RTCTime, retain=True)
 
@@ -463,19 +463,11 @@ def publish():
     DACOut = str(getDACOutValue())
     mqttc.publish(topic_DACOut, payload=DACOut, retain=True)
     
-    lock.acquire()
     AlarmUpper = str(dacVoltMax)
     mqttc.publish(topic_AlarmThresUpperValue, payload=AlarmUpper, retain=True)
     
     AlarmLower = str(dacVoltMin)
-    mqttc.publish(topic_AlarmThresLowerValue, payload=AlarmLower, retain=True)
-    
-    MonitoringStatus = "false"
-    if(monitoringEnabled):
-    	MonitoringStatus = "true"
-    mqttc.publish(topic_MonitoringEnabled, payload=MonitoringStatus, retain=True)
-    
-    
+    mqttc.publish(topic_AlarmThresLowerValue, payload=AlarmLower, retain=True)    
     lock.release()
 
     if getAlarmValue() == "*":
@@ -586,6 +578,8 @@ if __name__ == "__main__":
         while (not valuesUpdatorIsReady):
             time.sleep(float(readingInterval) / 20.0)
         
+        mqttc.loop_start()
+        mqttc.publish(topic_MonitoringEnabled, payload="true", retain=True)
         alarm.start()
         print("Ready...")
 
