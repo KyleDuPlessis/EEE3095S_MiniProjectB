@@ -316,7 +316,7 @@ def mqttSetMonitoring(client, userdata, message):
 		request = False
 		if(monitoringSetTo == "true"):
 			request = True
-		#monitoringEnabled = request		
+		monitoringEnabled = request		
 		lock.release()
 
 
@@ -423,15 +423,6 @@ def displayLoggingInformation():
 
 
 
-
-
-
-
-
-
-
-
-
 """
 MQTT
 """
@@ -474,20 +465,6 @@ def publish():
         mqttc.publish(topic_Alarm, payload="ON", retain=True)
     else:
         mqttc.publish(topic_Alarm, payload="OFF", retain=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
